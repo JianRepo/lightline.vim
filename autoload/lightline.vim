@@ -10,6 +10,34 @@ set cpo&vim
 
 let s:_ = 1 " 1: uninitialized, 2: disabled
 
+" skip statusline setting for plugs in this array
+" display plug name on statusline
+if !exists('g:plug_skip')
+  let g:plug_skip=['nerdtree', 'tagbar', 'startify']
+endif
+
+function! s:disp_plug(index, inactive) abort
+  if a:index >= 0 && a:index < len(g:plug_skip)
+    let active_str = a:inactive ? 'inactive' : 'active'
+    let str = g:plug_skip[a:index]
+    let cust_statusline = ' ' . toupper(str[0]) . str[1:(strlen(str) - 1)]
+    return '%#LightlineLeft_' . active_str . '_0#%(' . cust_statusline  . ' %)%#LightlineLeft_' . active_str  . '_0_1#' . s:lightline.separator.left
+  endif
+  return ' '
+endfunction
+
+function! s:plug_index(win_nr) abort
+  if exists('g:plug_skip')
+    let win_var = getwinvar(a:win_nr, '&ft')
+    for n in range(0, len(g:plug_skip) - 1)
+      if win_var == g:plug_skip[n]
+        return n
+      endif
+    endfor
+  endif
+  return -1
+endfunction
+
 function! lightline#update() abort
   if s:_
     if s:_ == 2 | return | endif
@@ -22,7 +50,8 @@ function! lightline#update() abort
   let w = winnr()
   let s = winnr('$') == 1 ? [lightline#statusline(0)] : [lightline#statusline(0), lightline#statusline(1)]
   for n in range(1, winnr('$'))
-    call setwinvar(n, '&statusline', s[n!=w])
+    let skip_index = s:plug_index(n)
+    call setwinvar(n, '&statusline', skip_index != -1 ? s:disp_plug(skip_index, n!=w) : s[n!=w])
     call setwinvar(n, 'lightline', n!=w)
   endfor
 endfunction
